@@ -1,0 +1,89 @@
+version: '3'
+
+services:
+  app:
+    container_name: contracts-app
+    build: .docker
+    entrypoint: dockerize -wait tcp://db:5432 -timeout 40s -wait tcp://kafka:9092 -timeout 120s ./.docker/entrypoint.sh
+    ports:
+      - 3001:3000
+    volumes:
+      - .:/home/node/app
+    links:
+      - db
+    depends_on:
+      - db
+      - kafka
+    # networks:
+    #   - blueotter
+
+  db:
+    container_name: contracts-db
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USERNAME}
+    ports:
+      - '5434:5432'
+    # networks:
+    #   - blueotter
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    # networks:
+    #   - blueotter
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_LISTENERS: INTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT
+  #   networks:
+  #     - blueotter
+
+  # control-center:
+  #   image: confluentinc/cp-enterprise-control-center:6.0.1
+  #   hostname: control-center
+  #   depends_on:
+  #     - kafka
+  #   ports:
+  #     - "9021:9021"
+  #   environment:
+  #     CONTROL_CENTER_BOOTSTRAP_SERVERS: 'kafka:9092'
+  #     CONTROL_CENTER_REPLICATION_FACTOR: 1
+  #     PORT: 9021
+  #   networks:
+  #     - blueotter
+
+  kafka-topics-generator:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - kafka
+    command: >
+      bash -c
+        "sleep 15s &&
+        kafka-topics --create --topic=contracts --partitions 2 --if-not-exists --bootstrap-server=kafka:9092 &&
+        kafka-topics --create --topic=ltcs --if-not-exists --bootstrap-server=kafka:9092 &&
+        kafka-topics --create --topic=accounts --if-not-exists --bootstrap-server=kafka:9092"
+
+#     networks:
+#       - blueotter
+
+# networks:
+#   blueotter:
+#     name: blueotter_network
+#     driver: bridge
+#     external: true

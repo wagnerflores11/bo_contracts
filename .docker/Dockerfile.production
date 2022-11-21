@@ -1,0 +1,35 @@
+FROM blueotter/node-nestjs
+
+WORKDIR /home/node
+
+# Configs
+COPY .env.example .env
+RUN printf "\n\n" >> .env
+
+RUN --mount=type=secret,id=DB_HOST \
+  echo "DB_HOST=$(cat /run/secrets/DB_HOST)" >> .env
+RUN --mount=type=secret,id=DB_USERNAME \
+  echo "DB_USERNAME=$(cat /run/secrets/DB_USERNAME)" >> .env
+RUN --mount=type=secret,id=DB_PASSWORD \
+  echo "DB_PASSWORD=$(cat /run/secrets/DB_PASSWORD)" >> .env
+RUN --mount=type=secret,id=DB_DATABASE \
+  echo "DB_DATABASE=$(cat /run/secrets/DB_DATABASE)" >> .env
+RUN --mount=type=secret,id=DB_PORT \
+  echo "DB_PORT=$(cat /run/secrets/DB_PORT)" >> .env 
+RUN --mount=type=secret,id=KAFKA_BROKERS \
+  echo "KAFKA_BROKERS=$(cat /run/secrets/KAFKA_BROKERS)" >> .env 
+
+USER node
+
+COPY package*.json ./
+
+RUN npm ci
+
+COPY --chown=node:node . .
+
+# Creates a "dist" folder with the production build
+RUN npm run build \
+  && npm prune --production
+
+# Start the server using the production build
+CMD [ "node", "dist/main.js" ]

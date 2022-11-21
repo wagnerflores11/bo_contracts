@@ -1,0 +1,49 @@
+name: ci-cd-workflow
+
+on:
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          file: .docker/Dockerfile.production
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/bo-2.0-contracts:latest
+          secrets: |
+            "DB_HOST=${{ secrets.DB_HOST}}"
+            "DB_USERNAME=${{ secrets.DB_USERNAME}}"
+            "DB_PASSWORD=${{ secrets.DB_PASSWORD}}"
+            "DB_DATABASE=${{ secrets.DB_DATABASE }}"
+            "DB_PORT=${{ secrets.DB_PORT }}"
+            "KAFKA_BROKERS=${{ secrets.KAFKA_BROKERS }}"
+
+      - name: Docker Pull & Docker Run
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: |
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/bo-2.0-contracts
+            docker ps -q --filter "name=bo-2.0-contracts" | grep -q . && docker stop bo-2.0-contracts
+            docker run -d --rm -p 8082:3000 --name bo-2.0-contracts --network blueotter_network ${{ secrets.DOCKERHUB_USERNAME }}/bo-2.0-contracts
+            docker rmi $(docker images -f "dangling=true" -q)

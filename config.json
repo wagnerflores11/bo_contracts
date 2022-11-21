@@ -1,0 +1,44 @@
+{
+  "services": [
+    {
+      "name": "Authentication",
+      "endpoints": [
+        {
+          "endpoint": "/auth/permissions",
+          "headers_to_pass": ["Authorization", "Content-Type", "Accept"],
+          "method": "GET",
+          "host": "http://localhost:3002"
+        },
+        {
+          "endpoint": "/auth/info",
+          "headers_to_pass": ["Authorization", "Content-Type", "Accept"],
+          "method": "GET",
+          "host": "http://localhost:3002"
+        },
+        {
+          "endpoint": "/auth/login",
+          "headers_to_pass": ["Content-Type", "Accept"],
+          "method": "POST",
+          "host": "http://localhost:3002"
+        }
+      ]
+    },
+    {
+      "name": "Comments",
+      "endpoints": [
+        {
+          "endpoint": "/comments",
+          "headers_to_pass": ["Authorization", "Content-Type", "Accept"],
+          "method": "GET",
+          "host": "http://localhost:3003"
+        },
+        {
+          "endpoint": "/comments",
+          "headers_to_pass": ["Authorization", "Content-Type", "Accept"],
+          "method": "POST",
+          "host": "http://localhost:3003"
+        }
+      ]
+    }
+  ]
+}
